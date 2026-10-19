@@ -40,6 +40,57 @@ service cloud.firestore {
         && request.resource.data.ownerUid == resource.data.ownerUid;
     }
 
+
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['displayName','bio','joinedAt'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 70
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 300;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','bio'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 70
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 300;
+      allow delete: if false;
+
+      match /friends/{friendUid} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.auth.uid == uid
+          && request.resource.data.uid == friendUid
+          && request.resource.data.keys().hasOnly(['uid','addedAt'])
+          && exists(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid))
+          && get(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid)).data.status == 'accepted';
+        allow update, delete: if false;
+      }
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if request.auth != null
+        && (resource.data.senderUid == request.auth.uid
+          || resource.data.recipientUid == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['senderUid','recipientUid','status','createdAt'])
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.recipientUid is string
+        && request.resource.data.recipientUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && requestId == request.resource.data.recipientUid + '_' + request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.recipientUid));
+      allow update: if request.auth != null
+        && resource.data.recipientUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['accepted','rejected'];
+      allow delete: if false;
+    }
+
     match /conversations/{conversationId} {
       function participant() {
         return request.auth != null
