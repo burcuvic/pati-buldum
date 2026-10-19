@@ -1,5 +1,5 @@
 window.PATI_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC7odwwLue0BF4E5tTGQ7ZW07PUxEWrXG0",
+  apiKey: "AIzaSyC7odwwLueOBF4E5tTGQ7ZW07PUxEWrXG0",
   authDomain: "pati-buldum.firebaseapp.com",
   projectId: "pati-buldum",
   storageBucket: "pati-buldum.firebasestorage.app",
