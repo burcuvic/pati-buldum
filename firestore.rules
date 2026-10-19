@@ -3,7 +3,7 @@ service cloud.firestore {
  match /databases/{database}/documents {
   match /pets/{petId} {
    allow read: if true;
-   allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid && request.resource.data.keys().hasOnly(['ownerUid','status','species','name','color','notes','area','lat','lng','photo','createdAt']) && request.resource.data.name is string && request.resource.data.name.size() <= 70 && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000 && request.resource.data.area is string && request.resource.data.area.size() <= 120 && request.resource.data.species in ['Kedi','Köpek'] && request.resource.data.status in ['Kayıp','Bulundu'];
+   allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid && request.resource.data.keys().hasOnly(['ownerUid','status','species','name','color','notes','area','lat','lng','photo','photos','createdAt']) && (!('photos' in request.resource.data) || (request.resource.data.photos is list && request.resource.data.photos.size() <= 6)) && request.resource.data.name is string && request.resource.data.name.size() <= 70 && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000 && request.resource.data.area is string && request.resource.data.area.size() <= 120 && request.resource.data.species in ['Kedi','Köpek'] && request.resource.data.status in ['Kayıp','Bulundu'];
    allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid && request.resource.data.ownerUid == resource.data.ownerUid;
   }
   match /conversations/{conversationId} {
