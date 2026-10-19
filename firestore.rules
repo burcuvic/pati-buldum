@@ -6,5 +6,34 @@ service cloud.firestore {
    allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid && request.resource.data.keys().hasOnly(['ownerUid','status','species','name','color','notes','area','lat','lng','photo','createdAt']) && request.resource.data.name is string && request.resource.data.name.size() <= 70 && request.resource.data.notes is string && request.resource.data.notes.size() <= 2000 && request.resource.data.area is string && request.resource.data.area.size() <= 120 && request.resource.data.species in ['Kedi','Köpek'] && request.resource.data.status in ['Kayıp','Bulundu'];
    allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid && request.resource.data.ownerUid == resource.data.ownerUid;
   }
+  match /conversations/{conversationId} {
+   function participant() { return request.auth != null && request.auth.uid in resource.data.participants; }
+   allow read: if participant();
+   allow create: if request.auth != null
+    && request.resource.data.keys().hasOnly(['petId','petName','ownerUid','senderUid','participants','createdAt'])
+    && request.resource.data.senderUid == request.auth.uid
+    && request.resource.data.petId is string
+    && request.resource.data.petName is string
+    && request.resource.data.petName.size() <= 70
+    && request.resource.data.ownerUid is string
+    && request.resource.data.ownerUid != request.auth.uid
+    && request.resource.data.participants == [request.resource.data.ownerUid,request.auth.uid]
+    && conversationId == request.resource.data.petId + '_' + request.auth.uid
+    && exists(/databases/$(database)/documents/pets/$(request.resource.data.petId))
+    && get(/databases/$(database)/documents/pets/$(request.resource.data.petId)).data.ownerUid == request.resource.data.ownerUid;
+   allow update, delete: if false;
+   match /messages/{messageId} {
+    function member() { return request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants; }
+    allow read: if member();
+    allow create: if member()
+      && request.resource.data.keys().hasOnly(['senderUid','text','createdAt'])
+      && request.resource.data.senderUid == request.auth.uid
+      && request.resource.data.text is string
+      && request.resource.data.text.size() > 0
+      && request.resource.data.text.size() <= 1000;
+    allow update, delete: if false;
+   }
+  }
+
  }
 }
