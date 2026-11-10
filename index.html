@@ -773,18 +773,32 @@ function showPetDetail(id,fromRoute=false){const p=pets.find(x=>x.id===id);if(!p
 $('locate').onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],12),()=>alert('Konum izni alınamadı.')):alert('Konum desteklenmiyor.');
 $('petForm').onsubmit=async e=>{e.preventDefault();if(!user){openAuth();return}if(!db||!cloudReady){alert('Firebase Firestore henüz hazır değil.');return}const button=e.target.querySelector('button.primary:last-child');button.disabled=true;button.textContent='Yükleniyor…';try{const f=new FormData(e.target),files=Array.from($('photo').files);if(!files.length||files.length>6||files.some(file=>!file.type.startsWith('image/')||file.size>5e6))throw Error('1–6 fotoğraf seçin; her biri en fazla 5 MB olmalı.');const id=crypto.randomUUID(),photos=[];for(const file of files){photos.push(await uploadCloudinary(file))}const photo=photos[0];let thumbnail=photo;if(thumbnailImage&&document.querySelector('input[name=thumbMode]:checked')?.value==='crop'){const blob=await thumbnailBlob();if(blob)thumbnail=await uploadCloudinary(new File([blob],'thumbnail.jpg',{type:'image/jpeg'}))}await db.collection('pets').doc(id).set({ownerUid:user.uid,contactPhone:f.get("phonePublic")==="yes"?(f.get("contactPhone")||"").trim():"",status:f.get('status'),lostPlace:f.get('status')==='Kayıp'?(f.get('lostPlace')||'').trim():'',species:f.get('species'),name:f.get('name'),color:f.get('color'),notes:f.get('notes'),area:f.get('area'),lat:f.get('lat')?Number(f.get('lat')):null,lng:f.get('lng')?Number(f.get('lng')):null,photo,photos,thumbnail,lostDate:f.get("status")==="Kayıp"?(f.get("lostDate")||""):"",reward:f.get("status")==="Kayıp"?(Number(f.get("reward"))||0):0,createdAt:firebase.firestore.FieldValue.serverTimestamp()});e.target.reset();thumbnailImage=null;$('thumbnailEditor').hidden=true;syncLostExtras();tab('list')}catch(err){alert('İlan yüklenemedi: '+err.message)}finally{button.disabled=false;button.textContent='İlanı kaydet'}};
 
-let pawloMatchCoords=null;
-$('pawloMatchLocate').onclick=()=>{if(!navigator.geolocation){$('pawloMatchLocationText').textContent='Cihaz konumu desteklenmiyor.';return}navigator.geolocation.getCurrentPosition(p=>{pawloMatchCoords={lat:Math.round(p.coords.latitude*100)/100,lng:Math.round(p.coords.longitude*100)/100};$('pawloMatchLocationText').textContent='Yaklaşık konum alındı. Kesin adres paylaşılmıyor.'},()=>{$('pawloMatchLocationText').textContent='Konum alınamadı; bölge yazıp devam edebilirsin.'},{timeout:10000,enableHighAccuracy:false})};
+let pawloMatchCoords=null,pawloLocationPending=null;
+function acquirePawloMatchLocation(){
+ if(pawloLocationPending)return pawloLocationPending;
+ if(!navigator.geolocation){$('pawloMatchLocationText').textContent='Konum desteklenmiyor, fotoğrafla devam edebilirsin.';return Promise.resolve(null)}
+ $('pawloMatchLocationText').textContent='📍 Yaklaşık konum izni isteniyor…';
+ pawloLocationPending=new Promise(resolve=>navigator.geolocation.getCurrentPosition(
+  p=>{pawloMatchCoords={lat:Math.round(p.coords.latitude*100)/100,lng:Math.round(p.coords.longitude*100)/100};$('pawloMatchLocationText').textContent='📍 Yaklaşık konum alındı (yaklaşık 1 km hassasiyet).';resolve(pawloMatchCoords)},
+  ()=>{$('pawloMatchLocationText').textContent='Konum paylaşılmadı. Fotoğrafla eşleştirme devam ediyor.';resolve(null)},
+  {timeout:6500,enableHighAccuracy:false,maximumAge:60000}
+ )).finally(()=>{pawloLocationPending=null});
+ return pawloLocationPending;
+}
+$('pawloMatchLocate').onclick=()=>{acquirePawloMatchLocation()};
 $('searchByPhoto').onclick=async()=>{
  const file=pawloCapturedFile||$('searchPhoto').files[0],out=$('photoMatches');
  if(!file||!file.type.startsWith('image/')){out.textContent='Lütfen bir fotoğraf seç.';return}
- out.textContent='🐾 Kayıp ilanlarındaki fotoğraflar karşılaştırılıyor…';
+ out.textContent='🐾 Konum (izin verildiyse) ve fotoğrafla tüm kayıp ilanları taranıyor…';
  try{
   const src=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
   const query=await embedding(src);
+  if(pawloLocationPending)await Promise.race([pawloLocationPending,new Promise(resolve=>setTimeout(resolve,2500))]);
   const region=$('pawloMatchArea').value.trim().toLocaleLowerCase('tr'),color=$('pawloMatchColor').value,seenDate=$('pawloMatchDate').value;
   const candidates=pets.filter(p=>p.status==='Kayıp'&&p.photo);
-  const results=(await Promise.all(candidates.map(async p=>{
+  const results=[];
+  for(let offset=0;offset<candidates.length;offset+=8){
+   const batch=await Promise.all(candidates.slice(offset,offset+8).map(async p=>{
    try{
     const visual=similarity(query,await cachedEmbedding(p.photo));
     if(visual===null||!Number.isFinite(visual))return null;
@@ -797,8 +811,12 @@ $('searchByPhoto').onclick=async()=>{
     if(seenDate&&p.lostDate&&seenDate>=p.lostDate){rank+=5;details.push('Tarih uyumu')}
     return{p,visual,rank,details};
    }catch(err){console.warn('Fotoğraf karşılaştırma başarısız:',err);return null}
-  }))).filter(Boolean).sort((a,b)=>b.rank-a.rank).slice(0,10);
-  out.innerHTML=results.length?'<p class="muted">Görsel benzerlik ve ek bilgilerle sıralanmıştır. Bu sonuçlar aynı hayvan olduğunu kanıtlamaz.</p>'+results.map(x=>'<div class="match-result pawlo-result-card"><img src="'+esc(x.p.thumbnail||x.p.photo)+'" alt="Kayıp ilan fotoğrafı"><div style="flex:1"><b>'+esc(x.p.name)+'</b><div class="score">Görsel benzerlik: %'+x.visual+'</div><small>Kayıp · '+esc(x.p.area)+'</small><p class="muted">'+esc(x.details.join(' · ')||'Fotoğrafa göre eşleştirildi')+'</p><button type="button" data-detail="'+esc(x.p.id)+'">İlanı incele →</button></div></div>').join(''):'<p>Şu anda fotoğrafı karşılaştırılabilecek kayıp ilanı yok.</p>';
+   }));
+   results.push(...batch.filter(Boolean));
+   out.textContent='🐾 '+Math.min(offset+8,candidates.length)+' / '+candidates.length+' kayıp ilanı tarandı…';
+  }
+  results.sort((a,b)=>b.rank-a.rank);
+  out.innerHTML=results.length?'<p class="muted">Toplam '+results.length+' eşleşme görsel benzerlik, konum, renk ve tarih bilgisine göre sıralandı. Bu sonuçlar aynı hayvan olduğunu kanıtlamaz.</p>'+results.map(x=>'<div class="match-result pawlo-result-card"><img src="'+esc(x.p.thumbnail||x.p.photo)+'" alt="Kayıp ilan fotoğrafı"><div style="flex:1"><b>'+esc(x.p.name)+'</b><div class="score">Görsel benzerlik: %'+x.visual+'</div><small>Kayıp · '+esc(x.p.area)+'</small><p class="muted">'+esc(x.details.join(' · ')||'Fotoğrafa göre eşleştirildi')+'</p><button type="button" data-detail="'+esc(x.p.id)+'">İlanı incele →</button></div></div>').join(''):'<p>Şu anda fotoğrafı karşılaştırılabilecek kayıp ilanı yok.</p>';
   out.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>showPetDetail(b.dataset.detail));
  }catch(err){out.textContent='AI eşleştirmesi başlatılamadı: '+err.message}
 }
@@ -820,8 +838,8 @@ $('pawloQuickPhoto').onclick=()=>{pawloChooser.hidden=false};
 $('pawloPhotoClose').onclick=closePawloChooser;
 pawloChooser.addEventListener('click',e=>{if(e.target===pawloChooser)closePawloChooser()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePawloChooser()});
-$('pawloCameraChoice').onclick=()=>{$('pawloCameraInput').click()};
-$('pawloGalleryChoice').onclick=()=>{$('searchPhoto').click()};
+$('pawloCameraChoice').onclick=()=>{acquirePawloMatchLocation();$('pawloCameraInput').click()};
+$('pawloGalleryChoice').onclick=()=>{acquirePawloMatchLocation();$('searchPhoto').click()};
 $('searchPhoto').addEventListener('change',()=>{if($('searchPhoto').files.length){pawloCapturedFile=null;closePawloChooser();leavePawloWelcome();tab('match');$('searchByPhoto').click()}});
 $('pawloCameraInput').addEventListener('change',()=>{const file=$('pawloCameraInput').files[0];if(file){pawloCapturedFile=file;closePawloChooser();leavePawloWelcome();tab('match');$('searchByPhoto').click()}});
 $('pawloQuickLost').onclick=()=>{leavePawloWelcome();tab('add');$('petForm').elements.status.value='Kayıp';$('petForm').elements.status.dispatchEvent(new Event('change'))};
