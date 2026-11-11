@@ -2,7 +2,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, feature/pawlo-fast-mobile-flow]
     paths:
       - 'index.html'
       - 'package.json'
@@ -23,7 +23,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Check runner Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -d "$ANDROID_HOME" || exit 1
+          ls "$ANDROID_HOME/platforms" || true
       - name: Install packages
         run: npm install
       - name: Build web
@@ -37,5 +41,5 @@ jobs:
         run: chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: pati-buldum-debug-apk
+          name: pawlo-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
