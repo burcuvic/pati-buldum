@@ -20,7 +20,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK hazırla (sunucuda kurulu olanı kullanır)
+        run: |
+          SDKM=$(ls -d $ANDROID_HOME/cmdline-tools/*/bin | sort -V | tail -1)/sdkmanager
+          yes | $SDKM --licenses > /dev/null || true
+          $SDKM "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - name: Paketleri kur
         run: npm ci
       - name: Kod kontrolü
