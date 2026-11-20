@@ -1,0 +1,6 @@
+import fs from 'node:fs';import * as tf from '@tensorflow/tfjs';import * as mobilenet from '@tensorflow-models/mobilenet';
+const root='/tmp/pawlo-model/',manifest=JSON.parse(fs.readFileSync(root+'model.json','utf8'));
+const weightData=Buffer.concat(manifest.weightsManifest.flatMap(g=>g.paths.map(p=>fs.readFileSync(root+p))));
+const io={load:async()=>({modelTopology:manifest.modelTopology,weightSpecs:manifest.weightsManifest.flatMap(g=>g.weights),weightData:weightData.buffer.slice(weightData.byteOffset,weightData.byteOffset+weightData.byteLength)})};
+const model=await mobilenet.load({version:2,alpha:1,modelUrl:io,inputRange:[-1,1]});
+const input=tf.randomUniform([224,224,3],0,255,'int32',42),embedding=model.infer(input,true),again=model.infer(input,true);const first=await embedding.data(),second=await again.data();let dot=0,aa=0,bb=0;for(let i=0;i<first.length;i++){dot+=first[i]*second[i];aa+=first[i]**2;bb+=second[i]**2}const similarity=dot/Math.sqrt(aa*bb);if(!Number.isFinite(similarity)||similarity<.99999||first.length!==1280)throw Error('Embedding check failed');embedding.dispose();again.dispose();input.dispose();console.log('PASS: MobileNet v2 produces 1280 finite visual features; identical input cosine similarity =',similarity.toFixed(6));

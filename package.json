@@ -1,0 +1,6 @@
+{
+  "name":"pawlo-app","version":"0.1.0","private":true,"type":"module",
+  "scripts":{"build":"node scripts/build.mjs","check":"node --check src/app.js && node --check src/backend.js && node --check src/similarity.js","android":"cap sync android","ios":"cap sync ios","native:add":"cap add android && cap add ios"},
+  "dependencies":{"@supabase/supabase-js":"2.119.0","@tensorflow/tfjs":"4.22.0","@tensorflow-models/mobilenet":"2.1.1","@capacitor/core":"8.6.0","@capacitor/android":"8.6.0","@capacitor/ios":"8.6.0","@capacitor/camera":"8.2.6","@capacitor/geolocation":"8.2.4"},
+  "devDependencies":{"esbuild":"0.28.2","@capacitor/cli":"8.6.0"}
+}

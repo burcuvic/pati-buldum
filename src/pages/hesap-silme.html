@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAWLO · Hesabını ve verilerini sil</title>
+<meta name="description" content="PAWLO hesabınızı ve size ait tüm verileri kalıcı olarak silin.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/assets/pages.css">
+</head>
+<body>
+<main>
+<a class="brand" href="/"><span><svg viewBox="0 0 64 64" width="21" height="21" fill="currentColor" aria-hidden="true"><ellipse cx="14" cy="25" rx="6.8" ry="9" transform="rotate(-28 14 25)"/><ellipse cx="27" cy="14" rx="6.8" ry="9" transform="rotate(-8 27 14)"/><ellipse cx="42" cy="16" rx="6.8" ry="9" transform="rotate(15 42 16)"/><ellipse cx="53" cy="29" rx="6.8" ry="9" transform="rotate(32 53 29)"/><path d="M32 29c-7 0-10 8-17 16-6 8 0 15 8 12 7-3 11-3 18 0 8 3 14-4 8-12-7-8-10-16-17-16Z"/></svg></span>PAWLO</a>
+<h1>Hesabını ve verilerini sil</h1>
+<p>Bu sayfadan PAWLO hesabını silebilirsin. Uygulama telefonunda yüklü olmasa da olur.</p>
+
+<div class="card">
+<h2 style="margin-top:0">Neler silinir?</h2>
+<ul>
+<li>Hesabın (ad, e-posta, şifre)</li>
+<li>Açtığın tüm kayıp ilanları ve fotoğrafları</li>
+<li>Yaptığın görülme bildirimleri ve fotoğrafları</li>
+<li>Rütben, bildirim sayın ve uygulama içi bildirimlerin</li>
+</ul>
+<p class="warn"><strong>Bu işlem geri alınamaz.</strong> Silme hemen gerçekleşir. Ayrıca bekletilen ya da saklanan bir kopya tutulmaz. Hizmet sağlayıcıların teknik bağlantı kayıtları, kendi saklama süreleri dolunca silinir.</p>
+</div>
+
+<div class="card" id="formCard">
+<h2 style="margin-top:0">Hesabını sil</h2>
+<form id="deleteForm" novalidate>
+<label for="email">E-posta adresin</label>
+<input id="email" type="email" autocomplete="email" required>
+<label for="password">Şifren</label>
+<input id="password" type="password" autocomplete="current-password" required minlength="6">
+<label for="phrase">Onaylamak için büyük harflerle <strong>SİL</strong> yaz</label>
+<input id="phrase" autocomplete="off" autocapitalize="characters" required>
+<p id="message" role="alert" aria-live="assertive"></p>
+<button type="submit" id="submitButton">Hesabımı ve verilerimi kalıcı olarak sil</button>
+</form>
+</div>
+
+<div class="card">
+<h2 style="margin-top:0">Şifreni hatırlamıyor musun?</h2>
+<p>Hesabına kayıtlı e-posta adresinden <a href="mailto:destek@ornek.com?subject=PAWLO%20hesap%20silme%20talebi" class="fill">[destek e-posta adresi]</a> adresine “hesap silme talebi” konulu bir e-posta gönder. Hesabın en geç 30 gün içinde silinir ve sana bilgi verilir.</p>
+</div>
+
+<p class="muted"><a href="/gizlilik.html">Gizlilik Politikası ve KVKK Aydınlatma Metni</a></p>
+</main>
+<script type="module" src="/assets/delete-page.js"></script>
+</body>
+</html>

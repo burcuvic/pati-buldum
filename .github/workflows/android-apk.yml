@@ -1,0 +1,42 @@
+name: PAWLO test APK
+# Her main güncellemesinde ve elle (Actions > Run workflow) test APK'sı derler.
+# Bu bir debug/test paketidir; Play Store'a gönderilmez. İmza anahtarı gerekmez.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Paketleri kur
+        run: npm ci
+      - name: Kod kontrolü
+        run: npm run check
+      - name: Web derlemesi
+        run: npm run build
+      - name: Android projesini güncelle
+        run: npx cap sync android
+      - name: APK derle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: APK'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawlo-test-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
